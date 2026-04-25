@@ -17,6 +17,48 @@
 
 ---
 
+## System Description
+
+### Overview
+Indico is an open-source event management system developed at CERN (European Organization for Nuclear Research). It is a comprehensive web-based platform designed to manage the full lifecycle of academic and professional events, from simple lectures to large-scale international conferences.
+
+### Purpose
+The system serves as a centralized platform for:
+- **Event Organization**: Creating and managing lectures, meetings, and conferences
+- **Room Booking**: Reserving physical spaces for events and meetings
+- **Registration Management**: Handling participant registration and payments
+- **Abstract Submission**: Managing call for abstracts and peer review workflows
+- **Content Management**: Storing and sharing presentations, documents, and materials
+
+### Target Users
+| User Type | Description |
+|-----------|-------------|
+| Event Organizers | Create and manage events, configure registration, manage abstracts |
+| Administrators | System-wide configuration, user management, room setup |
+| Participants | Register for events, submit abstracts, access event materials |
+| Room Managers | Manage room bookings, approve/reject booking requests |
+| Reviewers | Review submitted abstracts and provide evaluations |
+
+### Modules Under Test
+This test plan covers two primary modules:
+
+1. **Events Module** - Manages three event types:
+   - Lectures (simple single-session presentations)
+   - Meetings (multi-session collaborative events)
+   - Conferences (complex events with registration, abstracts, and tracks)
+
+2. **Room Booking Module** - Handles:
+   - Room search and availability checking
+   - Single and recurring bookings
+   - Pre-booking approval workflows
+   - Room blocking and management
+
+### System Access
+- **URL**: https://swe326.online
+- **Documentation**: https://getindico.io/ and https://indico.global/
+
+---
+
 ## Team Members and Assignments
 
 | Member | Assigned Section |
@@ -498,6 +540,170 @@
 | RB-065 | System shall allow Administrators to manage all rooms | High |
 | RB-066 | System shall allow Administrators to assign Room Manager roles | High |
 | RB-067 | System shall allow Administrators to configure room properties | High |
+
+---
+
+# Testing Techniques for Phase 2
+
+The following testing techniques will be applied during Phase 2 (Manual Testing) based on the requirements extracted above.
+
+---
+
+## 1. Input Space Partitioning (ISP)
+
+### Description
+Input Space Partitioning divides the input domain into partitions where inputs within each partition are expected to exhibit similar behavior. Test cases are designed to cover representative values from each partition, including valid inputs, boundary values, and invalid inputs.
+
+### Applicable Requirements
+- **Registration Forms (CONF-047 to CONF-064)**: Partitioning email formats, name lengths, field validations
+- **Room Booking Inputs (RB-011 to RB-019)**: Partitioning time ranges, date formats, booking durations
+- **Survey Inputs (SRV-010 to SRV-016)**: Partitioning response types, text lengths, selection counts
+
+### Example: Email Field Partitioning (CONF-057)
+
+| Partition | Example Values | Expected Result |
+|-----------|----------------|-----------------|
+| Valid email format | user@domain.com, test.name@university.edu | Accept |
+| Missing @ symbol | userdomain.com | Reject |
+| Missing domain | user@ | Reject |
+| Empty input | (blank) | Reject (if required) |
+| Special characters | user+tag@domain.com | Accept |
+| Multiple @ symbols | user@@domain.com | Reject |
+
+---
+
+## 2. Control Flow Coverage
+
+### Description
+Control Flow Coverage ensures that test cases exercise different execution paths through the system's workflows. This includes statement coverage, branch coverage, and path coverage to verify all decision points and process flows are tested.
+
+### Applicable Requirements
+- **Abstract Review Workflow (CONF-032 to CONF-046)**: Submit → Assign Reviewers → Review → Convener Decision → Judge Decision → Accept/Reject
+- **Payment Processing Flow (CONF-065 to CONF-074)**: Select Fee → Calculate Amount → Process Payment → Confirm/Fail → Receipt/Retry
+- **Pre-Booking Approval (RB-030 to RB-037)**: Request → Pending → Approve/Reject → Confirm/Cancel
+
+### Example: Abstract Review Workflow Paths
+
+```
+Path 1: Submit → Review → Accept → Add to Program
+Path 2: Submit → Review → Reject → Notify Author
+Path 3: Submit → Review → Request Revision → Resubmit → Accept
+Path 4: Submit → Mark as Duplicate → Merge with Existing
+```
+
+| Path | Branches Covered | Test Case Focus |
+|------|------------------|-----------------|
+| Accept Path | Review positive, Judge approve | Verify accepted abstracts appear in program |
+| Reject Path | Review negative, Judge reject | Verify rejection notification sent |
+| Revision Path | Review conditional, Author resubmits | Verify resubmission workflow |
+| Merge Path | Duplicate detection branch | Verify merge functionality |
+
+---
+
+## 3. Data Flow Testing
+
+### Description
+Data Flow Testing tracks how data values flow through the system, from where they are defined (created/assigned) to where they are used (read/processed). This ensures data integrity across different system components and identifies potential issues with uninitialized or improperly handled data.
+
+### Applicable Requirements
+- **Event Creation to Calendar Display**: Event data defined at creation, used in calendar rendering
+- **Abstract Submission to Program**: Abstract content defined by author, flows through review, used in final program
+- **Registration to Badge Printing**: Registrant data defined at registration, used for badge generation
+
+### Example: Event Data Flow
+
+| Stage | Definition (def) | Use | Verification |
+|-------|------------------|-----|--------------|
+| Creation | Title, date, location defined | Stored in database | Data persists correctly |
+| Display | - | Event details rendered on page | All fields display accurately |
+| Calendar | - | Date/time used for calendar entry | Correct positioning in calendar |
+| Export | - | ICS file generation | Valid calendar format with correct data |
+| Modification | Title updated (re-def) | Updated display | Changes propagate correctly |
+
+### Data Flow Chains
+```
+Registration Data: Form Input (def) → Validation → Database (use) →
+                   Confirmation Email (use) → Badge Print (use) → Export (use)
+
+Abstract Data: Submission (def) → Review Assignment (use) →
+              Reviewer Comments (def) → Decision (use) →
+              Program Inclusion (use) → Proceedings (use)
+```
+
+---
+
+## 4. Logic Coverage (Condition/Decision)
+
+### Description
+Logic Coverage tests the logical conditions in system decisions to ensure all combinations of conditions are exercised. This includes:
+- **Decision Coverage**: Each decision point evaluates to both true and false
+- **Condition Coverage**: Each individual condition within a decision evaluates to both true and false
+- **MC/DC (Modified Condition/Decision Coverage)**: Each condition independently affects the decision outcome
+
+### Applicable Requirements
+- **Protection Mode Logic (CAT-007 to CAT-009)**: Conditions determining access based on protection settings
+- **Booking Conflict Detection (RB-038 to RB-042)**: Conditions for time overlap and room availability
+- **Fee Calculation Logic (CONF-065 to CONF-069)**: Conditions determining applicable fee category
+
+### Example: Booking Conflict Detection (RB-038)
+
+**Decision**: Allow booking if `(room is available) AND (no time overlap) AND (user has permission)`
+
+| Test | Room Available | No Time Overlap | User Has Permission | Decision | Purpose |
+|------|----------------|-----------------|---------------------|----------|---------|
+| 1 | T | T | T | Allow | All conditions true |
+| 2 | F | T | T | Deny | Room availability affects decision |
+| 3 | T | F | T | Deny | Time overlap affects decision |
+| 4 | T | T | F | Deny | Permission affects decision |
+| 5 | F | F | F | Deny | All conditions false |
+
+### Example: Fee Category Selection (CONF-069)
+
+**Conditions**:
+- A: Registration date ≤ early bird deadline
+- B: Registrant is student
+- C: Registrant is speaker
+
+| Test | A (Early) | B (Student) | C (Speaker) | Applied Fee |
+|------|-----------|-------------|-------------|-------------|
+| 1 | T | T | F | Early Bird Student |
+| 2 | T | F | F | Early Bird Regular |
+| 3 | F | T | F | Regular Student |
+| 4 | F | F | F | Regular |
+| 5 | T | F | T | Speaker (free) |
+
+---
+
+# Testing Tools
+
+The following tools will be used for testing activities in Phase 2 and Phase 3.
+
+## Manual Testing Tools
+
+| Tool | Purpose | Usage Phase |
+|------|---------|-------------|
+| Google Chrome | Primary browser for testing | Phase 2, 3 |
+| Mozilla Firefox | Secondary browser for cross-browser testing | Phase 2 |
+| Chrome DevTools | Debugging, network inspection, console logging | Phase 2, 3 |
+| Snipping Tool / Greenshot | Capturing screenshots for bug reports | Phase 2 |
+| Microsoft Word | Test plan documentation, bug report templates | Phase 2, 3 |
+| Microsoft Excel | Test case management, traceability matrices | Phase 2, 3 |
+
+## Automated Testing Tools
+
+| Tool | Purpose | Usage Phase |
+|------|---------|-------------|
+| Testsigma | Cloud-based test automation platform with AI-driven test creation | Phase 3 |
+| Playwright | Modern browser automation framework with auto-wait, tracing, and multi-browser support | Phase 3 |
+| Python/TypeScript | Programming languages for writing Playwright test scripts | Phase 3 |
+
+## Supporting Tools
+
+| Tool | Purpose | Usage Phase |
+|------|---------|-------------|
+| Git/GitHub | Version control for test artifacts and scripts | All Phases |
+| JIRA/Trello | Bug tracking and task management | Phase 2, 3 |
+| Postman | API testing (if applicable) | Phase 3 |
 
 ---
 
